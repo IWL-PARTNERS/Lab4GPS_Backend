@@ -8,7 +8,7 @@ import random
 class CustomUser(AbstractUser):
     """
     Custom user model extending AbstractUser.
-    Adds fields for email verification and OTP functionality.
+    Adds fields for email verification, OTP functionality, and profile management.
     """
     email = models.EmailField(unique=True)
     is_verified = models.BooleanField(default=False)  # Status of email verification
@@ -16,16 +16,24 @@ class CustomUser(AbstractUser):
     otp_created_at = models.DateTimeField(blank=True, null=True)  # Timestamp for OTP creation
     reset_password_otp = models.CharField(max_length=6, blank=True, null=True)  # OTP for password reset
     reset_password_otp_created_at = models.DateTimeField(blank=True, null=True)  # Timestamp for reset OTP creation
+    profile_picture = models.ImageField(
+        upload_to="profile_pictures/",
+        blank=True,
+        null=True,
+        default="profile_pictures/default.jpg"
+    )  # Field for profile picture
+    registration_date = models.DateTimeField(default=timezone.now)  # Registration date
 
     def __str__(self):
         return self.username
 
+    # OTP Methods
     def generate_otp(self):
         """
         Generate a random 6-digit OTP for email verification.
         """
         self.otp = str(random.randint(100000, 999999))
-        self.otp_created_at = timezone.now()  # Use timezone-aware datetime
+        self.otp_created_at = timezone.now()
         self.save()
 
     def clear_otp(self):
@@ -41,16 +49,17 @@ class CustomUser(AbstractUser):
         Check if the email verification OTP is expired.
         """
         if self.otp_created_at:
-            expiry_time = self.otp_created_at + timedelta(minutes=10)  # OTP valid for 10 minutes
-            return timezone.now() > expiry_time  # Use timezone-aware datetime
+            expiry_time = self.otp_created_at + timedelta(minutes=10)
+            return timezone.now() > expiry_time
         return True
 
+    # Password Reset OTP Methods
     def generate_reset_password_otp(self):
         """
         Generate a random 6-digit OTP for password reset.
         """
         self.reset_password_otp = str(random.randint(100000, 999999))
-        self.reset_password_otp_created_at = timezone.now()  # Use timezone-aware datetime
+        self.reset_password_otp_created_at = timezone.now()
         self.save()
 
     def clear_reset_password_otp(self):
@@ -66,6 +75,38 @@ class CustomUser(AbstractUser):
         Check if the password reset OTP is expired.
         """
         if self.reset_password_otp_created_at:
-            expiry_time = self.reset_password_otp_created_at + timedelta(minutes=10)  # OTP valid for 10 minutes
-            return timezone.now() > expiry_time  # Use timezone-aware datetime
+            expiry_time = self.reset_password_otp_created_at + timedelta(minutes=10)
+            return timezone.now() > expiry_time
         return True
+
+    # Profile Update Methods
+    def update_profile(self, first_name=None, last_name=None, email=None, username=None):
+        """
+        Update user profile details.
+        """
+        if first_name:
+            self.first_name = first_name
+        if last_name:
+            self.last_name = last_name
+        if email:
+            self.email = email
+        if username:
+            self.username = username
+        self.save()
+
+    def update_profile_picture(self, picture):
+        """
+        Update user profile picture.
+        """
+        self.profile_picture = picture
+        self.save()
+
+    def change_password(self, old_password, new_password):
+        """
+        Change the user's password after verifying the old password.
+        """
+        if self.check_password(old_password):
+            self.set_password(new_password)
+            self.save()
+            return True
+        return False

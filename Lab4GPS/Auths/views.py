@@ -1,24 +1,26 @@
 from rest_framework import generics, status
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework.permissions import AllowAny, IsAuthenticated
+
 from .models import CustomUser
 from .serializers import (
     RegisterSerializer,
     VerifyOtpSerializer,
     LoginSerializer,
-    UserSerializer,
+    UserProfileSerializer,
+    UpdateProfileSerializer,
+    UpdateProfilePictureSerializer,
+    ChangePasswordSerializer,
     ForgotPasswordSerializer,
     VerifyResetOtpSerializer,
     ResetPasswordSerializer,
 )
 
 
+# Existing Views (Preserved)
 class RegisterView(generics.CreateAPIView):
-    """
-    API endpoint for user registration.
-    Sends an OTP to the provided email for verification.
-    """
     queryset = CustomUser.objects.all()
     serializer_class = RegisterSerializer
     permission_classes = [AllowAny]
@@ -26,7 +28,7 @@ class RegisterView(generics.CreateAPIView):
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        user = serializer.save()
+        serializer.save()
         return Response(
             {"message": "Registration successful. OTP sent to your email."},
             status=status.HTTP_201_CREATED,
@@ -34,9 +36,6 @@ class RegisterView(generics.CreateAPIView):
 
 
 class VerifyOtpView(generics.GenericAPIView):
-    """
-    API endpoint to verify OTP and activate the user's account.
-    """
     serializer_class = VerifyOtpSerializer
     permission_classes = [AllowAny]
 
@@ -50,10 +49,6 @@ class VerifyOtpView(generics.GenericAPIView):
 
 
 class LoginView(generics.GenericAPIView):
-    """
-    API endpoint for logging in a user.
-    Returns JWT tokens upon successful authentication.
-    """
     serializer_class = LoginSerializer
     permission_classes = [AllowAny]
 
@@ -66,27 +61,13 @@ class LoginView(generics.GenericAPIView):
             {
                 "refresh": str(refresh),
                 "access": str(refresh.access_token),
-                "user": UserSerializer(user).data,
+                "user": UserProfileSerializer(user).data,
             },
             status=status.HTTP_200_OK,
         )
 
 
-class UserDetailView(generics.RetrieveAPIView):
-    """
-    API endpoint to retrieve the authenticated user's details.
-    """
-    serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_object(self):
-        return self.request.user
-
-
 class ForgotPasswordView(generics.GenericAPIView):
-    """
-    API endpoint to send an OTP for password reset.
-    """
     serializer_class = ForgotPasswordSerializer
     permission_classes = [AllowAny]
 
@@ -100,9 +81,6 @@ class ForgotPasswordView(generics.GenericAPIView):
 
 
 class VerifyResetOtpView(generics.GenericAPIView):
-    """
-    API endpoint to verify the OTP for password reset.
-    """
     serializer_class = VerifyResetOtpSerializer
     permission_classes = [AllowAny]
 
@@ -116,9 +94,6 @@ class VerifyResetOtpView(generics.GenericAPIView):
 
 
 class ResetPasswordView(generics.GenericAPIView):
-    """
-    API endpoint to reset the user's password.
-    """
     serializer_class = ResetPasswordSerializer
     permission_classes = [AllowAny]
 
@@ -127,5 +102,57 @@ class ResetPasswordView(generics.GenericAPIView):
         serializer.is_valid(raise_exception=True)
         return Response(
             {"message": "Password reset successfully. You can now log in."},
+            status=status.HTTP_200_OK,
+        )
+
+
+# New Views for AdvancedUserProfile.js
+class UserProfileView(generics.RetrieveAPIView):
+    """
+    API endpoint to retrieve the authenticated user's profile.
+    """
+    serializer_class = UserProfileSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user
+
+
+class UpdateProfileView(generics.UpdateAPIView):
+    """
+    API endpoint to update the user's profile details (first name, last name, email, username).
+    """
+    serializer_class = UpdateProfileSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user
+
+
+class UpdateProfilePictureView(generics.UpdateAPIView):
+    """
+    API endpoint to update the user's profile picture.
+    """
+    serializer_class = UpdateProfilePictureSerializer
+    parser_classes = [MultiPartParser, FormParser]
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user
+
+
+class ChangePasswordView(generics.GenericAPIView):
+    """
+    API endpoint to change the user's password.
+    """
+    serializer_class = ChangePasswordSerializer
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(
+            {"message": "Password changed successfully."},
             status=status.HTTP_200_OK,
         )

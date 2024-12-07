@@ -1,8 +1,7 @@
 from rest_framework import serializers
-from rest_framework_simplejwt.tokens import RefreshToken
 from .models import CustomUser
 from django.core.mail import send_mail
-from datetime import datetime
+
 
 class RegisterSerializer(serializers.ModelSerializer):
     """
@@ -69,13 +68,67 @@ class LoginSerializer(serializers.Serializer):
             raise serializers.ValidationError("User not found.")
 
 
-class UserSerializer(serializers.ModelSerializer):
+class UserProfileSerializer(serializers.ModelSerializer):
     """
-    Serializer for retrieving user details.
+    Serializer for retrieving and updating user profile details.
     """
     class Meta:
         model = CustomUser
-        fields = ('id', 'email', 'username', 'first_name', 'last_name', 'is_verified')
+        fields = ('first_name', 'last_name', 'email', 'username', 'profile_picture', 'is_verified', 'registration_date')
+        read_only_fields = ('is_verified', 'registration_date', 'profile_picture')
+
+
+class UpdateProfileSerializer(serializers.ModelSerializer):
+    """
+    Serializer for updating user details (excluding password and profile picture).
+    """
+    class Meta:
+        model = CustomUser
+        fields = ('first_name', 'last_name', 'email', 'username')
+
+    def update(self, instance, validated_data):
+        instance.update_profile(
+            first_name=validated_data.get('first_name'),
+            last_name=validated_data.get('last_name'),
+            email=validated_data.get('email'),
+            username=validated_data.get('username'),
+        )
+        return instance
+
+
+class UpdateProfilePictureSerializer(serializers.ModelSerializer):
+    """
+    Serializer for updating the user's profile picture.
+    """
+    profile_picture = serializers.ImageField()
+
+    class Meta:
+        model = CustomUser
+        fields = ('profile_picture',)
+
+    def update(self, instance, validated_data):
+        instance.update_profile_picture(validated_data.get('profile_picture'))
+        return instance
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    """
+    Serializer for changing the user's password.
+    """
+    old_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True)
+
+    def validate(self, data):
+        user = self.context['request'].user
+        if not user.check_password(data['old_password']):
+            raise serializers.ValidationError("Old password is incorrect.")
+        return data
+
+    def save(self, **kwargs):
+        user = self.context['request'].user
+        user.set_password(self.validated_data['new_password'])
+        user.save()
+        return user
 
 
 class TokenSerializer(serializers.Serializer):
@@ -84,13 +137,6 @@ class TokenSerializer(serializers.Serializer):
     """
     access = serializers.CharField(read_only=True)
     refresh = serializers.CharField(read_only=True)
-
-    def get_tokens(self, user):
-        refresh = RefreshToken.for_user(user)
-        return {
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
-        }
 
 
 class ForgotPasswordSerializer(serializers.Serializer):
