@@ -3,7 +3,6 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework_simplejwt.tokens import RefreshToken
-
 from .models import CustomUser
 from .serializers import (
     RegisterSerializer,
@@ -18,14 +17,22 @@ from .serializers import (
     ResetPasswordSerializer,
 )
 
-
-# Existing Views (Preserved)
 class RegisterView(generics.CreateAPIView):
+    """
+    API endpoint for user registration.
+    """
     queryset = CustomUser.objects.all()
     serializer_class = RegisterSerializer
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
+        # Validate request data for first_name and last_name
+        if "first_name" not in request.data or "last_name" not in request.data:
+            return Response(
+                {"error": "First name and last name are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
@@ -34,8 +41,10 @@ class RegisterView(generics.CreateAPIView):
             status=status.HTTP_201_CREATED,
         )
 
-
 class VerifyOtpView(generics.GenericAPIView):
+    """
+    API endpoint to verify OTP for email verification.
+    """
     serializer_class = VerifyOtpSerializer
     permission_classes = [AllowAny]
 
@@ -47,8 +56,10 @@ class VerifyOtpView(generics.GenericAPIView):
             status=status.HTTP_200_OK,
         )
 
-
 class LoginView(generics.GenericAPIView):
+    """
+    API endpoint for user login.
+    """
     serializer_class = LoginSerializer
     permission_classes = [AllowAny]
 
@@ -66,8 +77,10 @@ class LoginView(generics.GenericAPIView):
             status=status.HTTP_200_OK,
         )
 
-
 class ForgotPasswordView(generics.GenericAPIView):
+    """
+    API endpoint to initiate password reset.
+    """
     serializer_class = ForgotPasswordSerializer
     permission_classes = [AllowAny]
 
@@ -79,8 +92,10 @@ class ForgotPasswordView(generics.GenericAPIView):
             status=status.HTTP_200_OK,
         )
 
-
 class VerifyResetOtpView(generics.GenericAPIView):
+    """
+    API endpoint to verify OTP for password reset.
+    """
     serializer_class = VerifyResetOtpSerializer
     permission_classes = [AllowAny]
 
@@ -92,8 +107,10 @@ class VerifyResetOtpView(generics.GenericAPIView):
             status=status.HTTP_200_OK,
         )
 
-
 class ResetPasswordView(generics.GenericAPIView):
+    """
+    API endpoint to reset user password.
+    """
     serializer_class = ResetPasswordSerializer
     permission_classes = [AllowAny]
 
@@ -105,8 +122,6 @@ class ResetPasswordView(generics.GenericAPIView):
             status=status.HTTP_200_OK,
         )
 
-
-# New Views for AdvancedUserProfile.js
 class UserProfileView(generics.RetrieveAPIView):
     """
     API endpoint to retrieve the authenticated user's profile.
@@ -114,20 +129,24 @@ class UserProfileView(generics.RetrieveAPIView):
     serializer_class = UserProfileSerializer
     permission_classes = [IsAuthenticated]
 
+    def get(self, request, *args, **kwargs):
+        user = self.request.user
+        print(f"First Name: {user.first_name}, Last Name: {user.last_name}")
+        serializer = self.get_serializer(user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
     def get_object(self):
         return self.request.user
 
-
 class UpdateProfileView(generics.UpdateAPIView):
     """
-    API endpoint to update the user's profile details (first name, last name, email, username).
+    API endpoint to update user profile details.
     """
     serializer_class = UpdateProfileSerializer
     permission_classes = [IsAuthenticated]
 
     def get_object(self):
         return self.request.user
-
 
 class UpdateProfilePictureView(generics.UpdateAPIView):
     """
@@ -139,7 +158,6 @@ class UpdateProfilePictureView(generics.UpdateAPIView):
 
     def get_object(self):
         return self.request.user
-
 
 class ChangePasswordView(generics.GenericAPIView):
     """
