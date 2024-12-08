@@ -63,7 +63,8 @@ MIDDLEWARE = [
 # Allow CORS for the frontend (ngrok base URL)
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # Replace with your frontend's local URL
-    "https://2c08-102-213-251-138.ngrok-free.app",  # Add the ngrok URL here
+    "https://1af8-102-213-251-138.ngrok-free.app",  # Add the ngrok URL here
+    "https://lab4gps-platform.vercel.app",
 ]
 
 # Root URL configuration
