@@ -1,25 +1,31 @@
 from django.urls import path
 from .views import (
-    FileUploadView,
-    FileListView,
-    FileDetailView,
-    LikeFileView,
-    CommentFileView,
     CategoryListView,
     TagListView,
-    IncrementDownloadCountView,
+    FileListView,
+    FileDetailView,
+    FileUploadView,
+    LikeView,
+    CommentView,
+    FileDownloadView,
 )
 
 urlpatterns = [
-    # File-related endpoints
-    path('files/upload/', FileUploadView.as_view(), name='file-upload'),
+    # Categories
+    path('categories/', CategoryListView.as_view(), name='category-list'),
+    
+    # Tags
+    path('tags/', TagListView.as_view(), name='tag-list'),
+    
+    # Files
     path('files/', FileListView.as_view(), name='file-list'),
     path('files/<int:pk>/', FileDetailView.as_view(), name='file-detail'),
-    path('files/<int:pk>/like/', LikeFileView.as_view(), name='file-like'),
-    path('files/<int:pk>/comments/', CommentFileView.as_view(), name='file-comments'),
-    path('files/<int:pk>/increment-download/', IncrementDownloadCountView.as_view(), name='increment-download'),
-
-    # Category and Tag endpoints
-    path('categories/', CategoryListView.as_view(), name='category-list'),
-    path('tags/', TagListView.as_view(), name='tag-list'),
+    path('files/<int:pk>/download/', FileDownloadView.as_view(), name='file-download'),
+    path('files/upload/', FileUploadView.as_view(), name='file-upload'),
+    
+    # Likes
+    path('files/<int:pk>/like/', LikeView.as_view(), name='file-like'),
+    
+    # Comments
+    path('files/<int:pk>/comments/', CommentView.as_view(), name='file-comments'),
 ]

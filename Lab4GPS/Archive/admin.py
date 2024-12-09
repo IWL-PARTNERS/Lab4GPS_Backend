@@ -5,42 +5,40 @@ from .models import Category, Tag, File, Comment, Like
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
     """
-    Admin interface for managing categories.
+    Admin interface for Category model.
     """
     list_display = ('id', 'name')
     search_fields = ('name',)
-    ordering = ('name',)
 
 
 @admin.register(Tag)
 class TagAdmin(admin.ModelAdmin):
     """
-    Admin interface for managing tags.
+    Admin interface for Tag model.
     """
     list_display = ('id', 'name')
     search_fields = ('name',)
-    ordering = ('name',)
 
 
 @admin.register(File)
 class FileAdmin(admin.ModelAdmin):
     """
-    Admin interface for managing files in the archive.
+    Admin interface for File model.
     """
-    list_display = ('id', 'title', 'category', 'author', 'upload_date', 'views', 'downloads')
-    list_filter = ('category', 'author', 'upload_date')
-    search_fields = ('title', 'description')
-    autocomplete_fields = ('category', 'author', 'tags')
+    list_display = ('id', 'title', 'author', 'category', 'upload_date', 'downloads', 'views')
+    list_filter = ('category', 'tags', 'upload_date')
+    search_fields = ('title', 'description', 'author__username')
     readonly_fields = ('views', 'downloads')
+    filter_horizontal = ('tags',)
     fieldsets = (
-        ('Basic Information', {
+        ("Basic Information", {
             'fields': ('title', 'description', 'category', 'tags', 'author', 'version')
         }),
-        ('File Details', {
-            'fields': ('file', 'media', 'views', 'downloads')
+        ("Media and Links", {
+            'fields': ('file', 'media', 'external_link')
         }),
-        ('Dates', {
-            'fields': ('upload_date',)
+        ("Statistics", {
+            'fields': ('views', 'downloads')
         }),
     )
 
@@ -48,19 +46,19 @@ class FileAdmin(admin.ModelAdmin):
 @admin.register(Comment)
 class CommentAdmin(admin.ModelAdmin):
     """
-    Admin interface for managing comments on files.
+    Admin interface for Comment model.
     """
-    list_display = ('id', 'file', 'user', 'text', 'created_at')
-    list_filter = ('file', 'user', 'created_at')
-    search_fields = ('text', 'user__username', 'file__title')
-    ordering = ('-created_at',)
+    list_display = ('id', 'file', 'user', 'created_at')
+    list_filter = ('created_at',)
+    search_fields = ('file__title', 'user__username', 'text')
+    date_hierarchy = 'created_at'
 
 
 @admin.register(Like)
 class LikeAdmin(admin.ModelAdmin):
     """
-    Admin interface for managing likes on files.
+    Admin interface for Like model.
     """
     list_display = ('id', 'file', 'user')
-    list_filter = ('file', 'user')
-    search_fields = ('user__username', 'file__title')
+    search_fields = ('file__title', 'user__username')
+    list_filter = ('file',)

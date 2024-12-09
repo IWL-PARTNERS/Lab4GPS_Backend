@@ -1,160 +1,166 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status, generics
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.parsers import MultiPartParser, FormParser
-from django.shortcuts import get_object_or_404
+from rest_framework import status, generics, permissions
 from .models import Category, Tag, File, Comment, Like
-from .serializers import FileSerializer, CommentSerializer, LikeSerializer, CategorySerializer, TagSerializer
-from django.db.models import Count
-
-
-class FileUploadView(APIView):
-    """
-    API View for uploading files to the archive.
-    """
-    parser_classes = [MultiPartParser, FormParser]
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, *args, **kwargs):
-        """
-        Handles file upload requests.
-        """
-        data = request.data.copy()
-        data['author'] = request.user.id  # Automatically associate the logged-in user as the author
-
-        serializer = FileSerializer(data=data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-class FileListView(generics.ListAPIView):
-    """
-    API View for retrieving and filtering files.
-    """
-    serializer_class = FileSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        """
-        Filter files based on query parameters.
-        """
-        queryset = File.objects.all()
-        category = self.request.query_params.get('category')
-        tags = self.request.query_params.getlist('tags')
-        search = self.request.query_params.get('search')
-
-        if category:
-            queryset = queryset.filter(category__name__iexact=category)
-        if tags:
-            queryset = queryset.filter(tags__name__in=tags).distinct()
-        if search:
-            queryset = queryset.filter(
-                title__icontains=search
-            ) | queryset.filter(description__icontains=search)
-
-        return queryset
-
-
-class FileDetailView(APIView):
-    """
-    API View for retrieving, updating, and deleting individual files.
-    """
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, pk, *args, **kwargs):
-        """
-        Retrieve a single file by ID and increment its view count.
-        """
-        file = get_object_or_404(File, pk=pk)
-        file.increment_views()
-        serializer = FileSerializer(file)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-    def delete(self, request, pk, *args, **kwargs):
-        """
-        Delete a file if the user is the author or an administrator.
-        """
-        file = get_object_or_404(File, pk=pk)
-        if file.author != request.user and not request.user.is_staff:
-            return Response(
-                {"detail": "You do not have permission to delete this file."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-        file.delete()
-        return Response({"detail": "File deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
-
-
-class LikeFileView(APIView):
-    """
-    API View for liking a file.
-    """
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, pk, *args, **kwargs):
-        """
-        Toggle like on a file.
-        """
-        file = get_object_or_404(File, pk=pk)
-        like, created = Like.objects.get_or_create(file=file, user=request.user)
-        if not created:
-            like.delete()  # Unlike if already liked
-            return Response({"detail": "File unliked."}, status=status.HTTP_200_OK)
-        return Response({"detail": "File liked."}, status=status.HTTP_201_CREATED)
-
-
-class CommentFileView(APIView):
-    """
-    API View for adding comments to a file.
-    """
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, pk, *args, **kwargs):
-        """
-        Add a comment to a file.
-        """
-        file = get_object_or_404(File, pk=pk)
-        data = request.data.copy()
-        data['file'] = file.id
-        data['user'] = request.user.id
-
-        serializer = CommentSerializer(data=data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+from .serializers import CategorySerializer, TagSerializer, FileSerializer, CommentSerializer, LikeSerializer
+from django.db.models import Q
 
 
 class CategoryListView(generics.ListAPIView):
     """
-    API View for listing all categories.
+    View to list all categories.
     """
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
 
 class TagListView(generics.ListAPIView):
     """
-    API View for listing all tags.
+    View to list all tags.
     """
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
 
-class IncrementDownloadCountView(APIView):
+class FileListView(APIView):
     """
-    API View to increment the download count of a file.
+    View to handle file listing, filtering, searching, and pagination.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
-    def post(self, request, pk, *args, **kwargs):
-        """
-        Increment the download count for a file.
-        """
-        file = get_object_or_404(File, pk=pk)
-        file.increment_downloads()
-        return Response({"detail": "Download count incremented."}, status=status.HTTP_200_OK)
+    def get(self, request):
+        files = File.objects.all()
+        category = request.query_params.get("category", "All")
+        tags = request.query_params.getlist("tags", [])
+        search = request.query_params.get("search", "")
+        page = int(request.query_params.get("page", 1))
+        files_per_page = 5
+
+        # Filtering by category
+        if category and category != "All":
+            files = files.filter(category__name=category)
+
+        # Filtering by tags
+        if tags:
+            files = files.filter(tags__name__in=tags).distinct()
+
+        # Searching by title or description
+        if search:
+            files = files.filter(Q(title__icontains=search) | Q(description__icontains=search))
+
+        # Pagination
+        total_files = files.count()
+        start = (page - 1) * files_per_page
+        end = start + files_per_page
+        files_paginated = files[start:end]
+
+        serializer = FileSerializer(files_paginated, many=True, context={"request": request})
+        return Response({
+            "files": serializer.data,
+            "total_pages": (total_files // files_per_page) + (1 if total_files % files_per_page > 0 else 0)
+        })
+
+
+class FileDetailView(APIView):
+    """
+    View to retrieve, update, or delete a single file.
+    """
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def get(self, request, pk):
+        try:
+            file = File.objects.get(pk=pk)
+            file.increment_views()
+            serializer = FileSerializer(file, context={"request": request})
+            return Response(serializer.data)
+        except File.DoesNotExist:
+            return Response({"error": "File not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    def put(self, request, pk):
+        try:
+            file = File.objects.get(pk=pk)
+            serializer = FileSerializer(file, data=request.data, partial=True, context={"request": request})
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except File.DoesNotExist:
+            return Response({"error": "File not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    def delete(self, request, pk):
+        try:
+            file = File.objects.get(pk=pk)
+            file.delete()
+            return Response({"message": "File deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+        except File.DoesNotExist:
+            return Response({"error": "File not found"}, status=status.HTTP_404_NOT_FOUND)
+
+
+class FileUploadView(APIView):
+    """
+    View to handle file uploads.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        serializer = FileSerializer(data=request.data, context={"request": request})
+        if serializer.is_valid():
+            serializer.save(author=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class LikeView(APIView):
+    """
+    View to handle liking and unliking files.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            file = File.objects.get(pk=pk)
+            like, created = Like.objects.get_or_create(file=file, user=request.user)
+            if not created:
+                like.delete()
+                return Response({"message": "Like removed"}, status=status.HTTP_200_OK)
+            return Response({"message": "File liked"}, status=status.HTTP_201_CREATED)
+        except File.DoesNotExist:
+            return Response({"error": "File not found"}, status=status.HTTP_404_NOT_FOUND)
+
+
+class CommentView(APIView):
+    """
+    View to handle comments on files.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            file = File.objects.get(pk=pk)
+            data = request.data.copy()
+            data["file"] = pk
+            serializer = CommentSerializer(data=data, context={"request": request})
+            if serializer.is_valid():
+                serializer.save(user=request.user)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except File.DoesNotExist:
+            return Response({"error": "File not found"}, status=status.HTTP_404_NOT_FOUND)
+
+
+class FileDownloadView(APIView):
+    """
+    View to handle file downloads and increment the download count.
+    """
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def get(self, request, pk):
+        try:
+            file = File.objects.get(pk=pk)
+            file.increment_downloads()
+            serializer = FileSerializer(file, context={"request": request})
+            return Response(serializer.data)
+        except File.DoesNotExist:
+            return Response({"error": "File not found"}, status=status.HTTP_404_NOT_FOUND)
