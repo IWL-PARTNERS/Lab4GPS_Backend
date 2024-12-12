@@ -12,7 +12,7 @@ class CategoryListView(generics.ListAPIView):
     """
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
 
 class TagListView(generics.ListAPIView):
@@ -21,16 +21,17 @@ class TagListView(generics.ListAPIView):
     """
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
 
 class FileListView(APIView):
     """
     View to handle file listing, filtering, searching, and pagination.
     """
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
+        # Base queryset
         files = File.objects.all()
         category = request.query_params.get("category", "All")
         tags = request.query_params.getlist("tags", [])
@@ -40,7 +41,7 @@ class FileListView(APIView):
 
         # Filtering by category
         if category and category != "All":
-            files = files.filter(category__name=category)
+            files = files.filter(category__name__iexact=category)
 
         # Filtering by tags
         if tags:
@@ -67,7 +68,7 @@ class FileDetailView(APIView):
     """
     View to retrieve, update, or delete a single file.
     """
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, pk):
         try:
@@ -154,7 +155,7 @@ class FileDownloadView(APIView):
     """
     View to handle file downloads and increment the download count.
     """
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, pk):
         try:

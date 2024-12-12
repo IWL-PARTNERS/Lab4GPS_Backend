@@ -12,6 +12,9 @@ urlpatterns = [
 
     # Archive app URLs
     path('archive/', include('Archive.urls')),  # Added Archive app routes
+    
+    path('ideas/', include('ProposeIdea.urls')),
+
 ]
 
 # Serve media files during development

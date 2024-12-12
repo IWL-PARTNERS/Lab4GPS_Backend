@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     # Your apps
     'Auths',
     'Archive',
+    'ProposeIdea',
 ]
 
 MIDDLEWARE = [
@@ -63,7 +64,7 @@ MIDDLEWARE = [
 # Allow CORS for the frontend (ngrok base URL)
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # Replace with your frontend's local URL
-    "https://1af8-102-213-251-138.ngrok-free.app",  # Add the ngrok URL here
+    "https://ae62-102-213-251-138.ngrok-free.app",  # Add the ngrok URL here
     "https://lab4gps-platform.vercel.app",
 ]
 
