@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'Archive',
     'ProposeIdea',
     'IdeaHubDashboard',
+    'Problem',
 ]
 
 MIDDLEWARE = [

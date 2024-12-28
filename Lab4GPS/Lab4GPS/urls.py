@@ -1,3 +1,5 @@
+# myproject/urls.py
+
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
@@ -12,14 +14,15 @@ urlpatterns = [
 
     # Archive app URLs
     path('archive/', include('Archive.urls')),  # Added Archive app routes
-    
+
     # ProposeIdea app URLs
     path('ideas/', include('ProposeIdea.urls')),
 
     # IdeaHubDashboard app URLs
-    # Integrate the IdeaHubDashboard routes under a specific prefix, for example: 'api/'
-    # So that the IdeaHubDashboard endpoints align with what was used in IdeaHubDashboardService ("/api/...").
-    path('ideadashboard/', include('IdeaHubDashboard.urls')), 
+    path('ideadashboard/', include('IdeaHubDashboard.urls')),
+
+    # Problem App URLs
+    path('problems/', include('Problem.urls')),
 ]
 
 # Serve media files during development
