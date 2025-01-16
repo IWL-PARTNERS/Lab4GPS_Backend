@@ -10,6 +10,27 @@ class Problem(models.Model):
     Now handles actual file uploads for media files and submitter photo.
     """
 
+    # Define the 17 Sustainable Development Goals (SDGs) as choices
+    SDG_CHOICES = [
+        ('1. No Poverty', 'No Poverty'),
+        ('2. Zero Hunger', 'Zero Hunger'),
+        ('3. Good Health and Well-being', 'Good Health and Well-being'),
+        ('4. Quality Education', 'Quality Education'),
+        ('5. Gender Equality', 'Gender Equality'),
+        ('6. Clean Water and Sanitation', 'Clean Water and Sanitation'),
+        ('7. Affordable and Clean Energy', 'Affordable and Clean Energy'),
+        ('8. Decent Work and Economic Growth', 'Decent Work and Economic Growth'),
+        ('9. Industry, Innovation, and Infrastructure', 'Industry, Innovation, and Infrastructure'),
+        ('10. Reduced Inequalities', 'Reduced Inequalities'),
+        ('11. Sustainable Cities and Communities', 'Sustainable Cities and Communities'),
+        ('12. Responsible Consumption and Production', 'Responsible Consumption and Production'),
+        ('13. Climate Action', 'Climate Action'),
+        ('14. Life Below Water', 'Life Below Water'),
+        ('15. Life on Land', 'Life on Land'),
+        ('16. Peace, Justice, and Strong Institutions', 'Peace, Justice, and Strong Institutions'),
+        ('17. Partnerships for the Goals', 'Partnerships for the Goals'),
+    ]
+
     # Optional foreign key to CustomUser if the submitter is an authenticated user.
     submitter = models.ForeignKey(
         CustomUser,
@@ -53,6 +74,15 @@ class Problem(models.Model):
             ("Critical", "Critical"),
         ],
         verbose_name="Urgency Level"
+    )
+
+    # **New Field: Sustainable Development Goal (SDG)**
+    sdg = models.CharField(
+        max_length=50,
+        choices=SDG_CHOICES,
+        default='1. No Poverty',  # Set a default value
+        verbose_name="Sustainable Development Goal (SDG)",
+        help_text="The SDG related to the problem.",
     )
 
     # Location Info
